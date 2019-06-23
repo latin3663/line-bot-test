@@ -12,12 +12,12 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+# 環境変数からchannel_secret・channel_access_tokenを取得
 
 import os
 import sys
-from argparse import ArgumentParser
-
 from flask import Flask, request, abort
+
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -30,9 +30,10 @@ from linebot.models import (
 
 app = Flask(__name__)
 
-# get channel_secret and channel_access_token from your environment variable
-channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
-channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+
+channel_secret = os.environ['LINE_CHANNEL_SECRET']
+channel_access_token = os.environ['LINE_CHANNEL_ACCESS_TOKEN']
+
 if channel_secret is None:
     print('Specify LINE_CHANNEL_SECRET as environment variable.')
     sys.exit(1)
@@ -44,9 +45,8 @@ line_bot_api = LineBotApi(channel_access_token)
 handler = WebhookHandler(channel_secret)
 
 @app.route("/")
-def index():
-    return "hello world"
-
+def hello_world():
+    return "hello world!"
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -67,13 +67,11 @@ def callback():
 
 
 @handler.add(MessageEvent, message=TextMessage)
-def message_text(event):
+def handle_message(event):
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=event.message.text)
-    )
+        TextSendMessage(text=event.message.text))
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run()
