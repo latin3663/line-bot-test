@@ -62,13 +62,14 @@ handler = WebhookHandler(channel_secret)
 
 @app.route("/")
 def index():
-    # with psycopg2.connect(DATABASE_URL) as conn:
-    #     with conn.cursor() as cur:
-    #         cur.execute("SELECT user_id FROM car_stock.line_user_id")
-    #         userIdRows = cur.fetchall()
+    with psycopg2.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM car_stock.line_user_id")
+            userIdRows = cur.fetchall()
 
     messages = TextMessage(text="Hello world!!")
-    line_bot_api.push_message(user_id, messages)
+    for userIdRow in userIdRows:
+        line_bot_api.push_message(userIdRow[0], messages)
     return "hello world"
 
 
