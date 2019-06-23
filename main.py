@@ -99,8 +99,7 @@ def message_text(event):
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT * FROM car_stock.line_user_id where user_id = " +
-                    id)
+                    "SELECT * FROM car_stock.line_user_id where user_id = " + profile.user_id)
                 userIdRow = cur.fetchone()
                 # 未登録のユーザーなら登録しておく
                 if userIdRow is None:
