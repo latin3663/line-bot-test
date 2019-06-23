@@ -53,6 +53,7 @@ app = Flask(__name__)
 # get channel_secret and channel_access_token from your environment variable
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+user_id = os.getenv('USER_ID', None)
 if channel_secret is None:
     print('Specify LINE_CHANNEL_SECRET as environment variable.')
     sys.exit(1)
@@ -62,6 +63,12 @@ if channel_access_token is None:
 
 line_bot_api = LineBotApi(channel_access_token)
 handler = WebhookHandler(channel_secret)
+
+@app.route("/")
+def index():
+    messages = TextMessage(text="Hello world!!")
+    line_bot_api.push_message(user_id, messages)
+    return "hello world"
 
 def test():
     siteUrl = "http://www.lawson.co.jp/ponta/tsukau/otameshi/apr/1368428_2585.html"
