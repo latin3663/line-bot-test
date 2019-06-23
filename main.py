@@ -12,6 +12,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+
 import os
 import sys
 from argparse import ArgumentParser
@@ -75,4 +76,4 @@ def message_text(event):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=False, host='0.0.0.0', port=5000)
