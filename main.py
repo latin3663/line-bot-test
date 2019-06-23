@@ -68,7 +68,7 @@ def index():
             userIdRows = cur.fetchall()
 
     messages = TextMessage(text="Hello world!!")
-    line_bot_api.multicast(userIdRows, messages)
+    line_bot_api.multicast(user_id, messages)
     return "hello world"
 
 
