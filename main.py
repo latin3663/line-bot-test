@@ -17,14 +17,12 @@ import sys
 from argparse import ArgumentParser
 
 from flask import Flask, request, abort
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
+from linebot import (LineBotApi, WebhookHandler)
+from linebot.exceptions import (InvalidSignatureError)
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,
+    MessageEvent,
+    TextMessage,
+    TextSendMessage,
 )
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -38,19 +36,16 @@ import os
 import urllib.request
 import requests
 from datetime import datetime
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
-from linebot.models import (
-    MessageEvent, TextMessage, MessageAction, TemplateSendMessage,
-    ButtonsTemplate)
+from linebot import (LineBotApi, WebhookHandler)
+from linebot.exceptions import (InvalidSignatureError)
+from linebot.models import (MessageEvent, TextMessage, MessageAction,
+                            TemplateSendMessage, ButtonsTemplate)
+import psycopg2
 
 app = Flask(__name__)
 
 # get channel_secret and channel_access_token from your environment variable
+DATABASE_URL = os.getenv('DATABASE_URL', None)
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 user_id = os.getenv('USER_ID', None)
@@ -64,24 +59,18 @@ if channel_access_token is None:
 line_bot_api = LineBotApi(channel_access_token)
 handler = WebhookHandler(channel_secret)
 
+
 @app.route("/")
 def index():
+    with psycopg2.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM car_stock.line_user_id")
+            userIdRows = cur.fetchall()
+
     messages = TextMessage(text="Hello world!!")
-    line_bot_api.push_message(user_id, messages)
+    line_bot_api.push_message(userIdRows, messages)
     return "hello world"
 
-def test():
-    siteUrl = "http://www.lawson.co.jp/ponta/tsukau/otameshi/apr/1368428_2585.html"
-    response = requests.get(siteUrl)
-    response.encoding = response.apparent_encoding  # この行を追加
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    items = soup.select("div.rightBlock > p.ttl")
-    result = datetime.now().strftime('%Y/%m/%d %H:%M:%S') + ",商品名："
-    for item in items:
-        #print(str(item).replace("\u3000", " ").text)
-        result += "\n◆" + item.text
-    return result
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -103,7 +92,27 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def message_text(event):
-    profile = line_bot_api.get_profile(event.source.user_id)
+    if event.type == "message":
+        profile = line_bot_api.get_profile(event.source.user_id)
+        messages = TextMessage(text="メッセージイベントを取得しました。\nYour ID:" +
+                               profile.user_id)
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM car_stock.line_user_id where user_id = " +
+                    id)
+                userIdRow = cur.fetchone()
+                # 未登録のユーザーなら登録しておく
+                if userIdRow is None:
+                    insertSql = "INSERT INTO car_stock.line_user_id VALUES (" + profile.user_id + ")"
+                    # INSERT文 実行
+                    cur.execute(insertSql)
+                    # INSERT をコミット
+                    conn.commit()
+                
+    elif event.type == "follow":
+        messages = TextMessage(text="フォローイベントを取得しました。\nYour ID:" +
+                               profile.user_id)
 
     status_msg = profile.status_message
     if status_msg != "None":
@@ -117,7 +126,6 @@ def message_text(event):
     #                                    text=f"User Id: {profile.user_id[:5]}...\n"
     #                                         f"Status Message: {status_msg}",
     #                                    actions=[MessageAction(label="成功", text="次は何を実装しましょうか？")]))
-    messages = TextMessage(text="Your ID:" + profile.user_id)
 
     line_bot_api.reply_message(event.reply_token, messages=messages)
 
@@ -125,4 +133,3 @@ def message_text(event):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
