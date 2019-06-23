@@ -12,12 +12,11 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
-# 環境変数からchannel_secret・channel_access_tokenを取得
-
 import os
 import sys
-from flask import Flask, request, abort
+from argparse import ArgumentParser
 
+from flask import Flask, request, abort
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -27,13 +26,24 @@ from linebot.exceptions import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import chromedriver_binary
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import os
+import urllib.request
+import requests
+from datetime import datetime
 
 app = Flask(__name__)
 
-
-channel_secret = os.environ['LINE_CHANNEL_SECRET']
-channel_access_token = os.environ['LINE_CHANNEL_ACCESS_TOKEN']
-
+# get channel_secret and channel_access_token from your environment variable
+channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
+channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 if channel_secret is None:
     print('Specify LINE_CHANNEL_SECRET as environment variable.')
     sys.exit(1)
@@ -44,9 +54,18 @@ if channel_access_token is None:
 line_bot_api = LineBotApi(channel_access_token)
 handler = WebhookHandler(channel_secret)
 
-@app.route("/")
-def hello_world():
-    return "hello world!"
+def test():
+    siteUrl = "http://www.lawson.co.jp/ponta/tsukau/otameshi/apr/1368428_2585.html"
+    response = requests.get(siteUrl)
+    response.encoding = response.apparent_encoding  # この行を追加
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    items = soup.select("div.rightBlock > p.ttl")
+    result = datetime.now().strftime('%Y/%m/%d %H:%M:%S') + ",商品名："
+    for item in items:
+        #print(str(item).replace("\u3000", " ").text)
+        result += "\n◆" + item.text
+    return result
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -67,11 +86,16 @@ def callback():
 
 
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
+def message_text(event):
+    resultText = test()
+    app.logger.info("Test::: " + resultText)
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=event.message.text))
+        TextSendMessage(text=resultText)
+    )
 
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
